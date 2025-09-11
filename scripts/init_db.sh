@@ -7,12 +7,12 @@ set -eo pipefail
 # [ condition ] checks condition, returns 0 if true, non-zero if false
 # [ -x file ] returns 0 if file exists and you have permission to execute it, else non-zero
 if ! [ -x "$(command -v psql)" ]; then
-    echo >&2 "Error: psql is not installed."
+    echo "Error: psql is not installed." >&2
     exit 1
 fi
 
-if ! [ -x "$(command -v sqlx)" ] then 
-    echo >&2 "Error: sqlx is not installed."
+if ! [ -x "$(command -v sqlx)" ]; then 
+    echo "Error: sqlx is not installed." >&2
     exit 1
 fi
 
@@ -24,13 +24,18 @@ DB_PORT="${POSTGRES_PORT:=5432}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 
 # Launch postgres using Docker
-docker run \
-    -e POSTGRES_USER=${DB_USER} \
-    -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-    -e POSTGRES_DB=${DB_NAME} \
-    -p "${DB_PORT}":5432 \
-    -d postgres \
-    postgres -N 1000
+# Allow to skip Docker if a dockerized Postgres database is already running
+# [[ ... ]] is like [ ... ] but modern, actually should use this instead
+# -z returns true if string is empty, false otherwise
+if [[ -z "${SKIP_DOCKER}" ]]; then
+    docker run \
+        -e POSTGRES_USER=${DB_USER} \
+        -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+        -e POSTGRES_DB=${DB_NAME} \
+        -p "${DB_PORT}":5432 \
+        -d postgres \
+        postgres -N 1000
+fi
 
 # Keep pinging Postgres until it's ready to accept commands
 # `until` runs the COMMANDS repeatedly until they succeed. "Success"
@@ -38,12 +43,15 @@ docker run \
 # psql will after it manages to connect.
 export PGPASSWORD=${DB_PASSWORD} # this is required for psql to connect to the DB in order to execute whatever we put after -c, which is quit
 until psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "postgres" -c '\q'; do
-    >&2 echo "Postgres is still unavailable - sleeping"
+    echo "Postgres is still unavailable - sleeping" >&2
     sleep 1
 done
 
->&2 echo "Postgres is up and running on port ${DB_PORT}"
+echo "Postgres is up and running on port ${DB_PORT} - running migrations now!" >&2 
 
 DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 export DATABASE_URL
 sqlx database create
+sqlx migrate run
+
+echo "Postgres has been migrated, ready to go!" >&2
