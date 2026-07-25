@@ -3,6 +3,20 @@ name = "zero2prod"
 version = "0.1.0"
 edition = "2024"
 
+# We only can have 1 library in a package
+[lib]
+path = "src/lib.rs"
+
+# We can have multiple binaries in a package
+# [[xxx]] is TOML syntax for an array. [[bin]] means bin is an array
+# Name is the binary output's name after we run cargo build
+[[bin]]
+path = "src/main.rs"
+name = "zero2prod"
+
 [dependencies]
 axum = "0.8.9"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+reqwest = "0.13.4" # only used in our integration tests

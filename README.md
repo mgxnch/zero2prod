@@ -7,3 +7,9 @@
 ## Backend
 
 Using `axum` as the web server.
+
+## Development
+
+```bash
+cargo watch -x check -x test -x run
+```
