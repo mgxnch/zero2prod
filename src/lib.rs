@@ -19,6 +19,7 @@ pub fn app() -> Router {
         .route("/health_check", get(health_check))
 }
 
-pub async fn listener() -> Result<TcpListener, std::io::Error> {
-    TcpListener::bind("127.0.0.1:0").await
+/// Binds a listener on a given port.
+pub async fn listener(port: u16) -> Result<TcpListener, std::io::Error> {
+    TcpListener::bind(format!("127.0.0.1:{}", port)).await
 }

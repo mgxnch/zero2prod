@@ -28,7 +28,7 @@ async fn spawn_app() -> String {
 
     // Keep bind outside of tokio::spawn because we want to
     // ensure that the bind.await call succeeds
-    let listener = listener().await.unwrap();
+    let listener = listener(0).await.unwrap();
     let port = listener.local_addr().unwrap().port();
 
     // Spawn the server as a background task
