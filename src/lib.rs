@@ -1,6 +1,7 @@
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::{Router, routing::get};
+use tokio::net::TcpListener;
 
 async fn greet(Path(name): Path<String>) -> String {
     format!("Hello {}", name)
@@ -16,4 +17,8 @@ pub fn app() -> Router {
         .route("/", get(|| async { "hello world!" }))
         .route("/{name}", get(greet))
         .route("/health_check", get(health_check))
+}
+
+pub async fn listener() -> Result<TcpListener, std::io::Error> {
+    TcpListener::bind("127.0.0.1:0").await
 }
