@@ -21,6 +21,51 @@ async fn health_check_works() {
     assert_eq!(Some(0), response.content_length());
 }
 
+#[tokio::test]
+async fn subscribe_returns_a_200_for_valid_form_data() {
+    let addr = spawn_app().await;
+    let client = Client::new();
+
+    let body = "name=user%20one&email=foo_bar%40baz.com";
+    let response = client
+        .post(format!("{}/subscriptions", addr))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert!(response.status().is_success());
+}
+
+#[tokio::test]
+async fn subscribe_returns_a_404_when_data_is_missing() {
+    let addr = spawn_app().await;
+    let client = Client::new();
+    let test_cases = vec![
+        ("name=foo", "missing the email"),
+        ("email=foo%40bar.com", "missing the name"),
+        ("", "missing both name and email"),
+    ];
+
+    for (invalid_body, error_message) in test_cases {
+        let response = client
+            .post(format!("{}/subscriptions", addr))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(invalid_body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        assert_eq!(
+            404,
+            response.status().as_u16(),
+            "The API did not fail with 400 Bad Request when the payload was {}.", // additional customised error message on test failure
+            error_message
+        )
+    }
+}
+
 /// Spawns the zero2prod server in the background on a random port. Returns the
 /// application address e.g. "127.0.0.1:{port}"
 async fn spawn_app() -> String {
