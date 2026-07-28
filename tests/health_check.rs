@@ -1,5 +1,6 @@
 use reqwest::Client;
-use zero2prod::{app, listener};
+
+use zero2prod::routes::{app, listener};
 
 #[tokio::test]
 async fn health_check_works() {

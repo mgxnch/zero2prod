@@ -1,4 +1,4 @@
-use zero2prod::{app, listener};
+use zero2prod::routes::{app, listener};
 
 #[tokio::main]
 async fn main() {
