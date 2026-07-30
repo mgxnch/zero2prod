@@ -15,6 +15,7 @@ pub fn app() -> Router {
 }
 
 /// Binds a listener on a given port.
+/// TODO: refactor to accept an address instead of just the port
 pub async fn listener(port: u16) -> Result<TcpListener, std::io::Error> {
     TcpListener::bind(format!("127.0.0.1:{}", port)).await
 }
