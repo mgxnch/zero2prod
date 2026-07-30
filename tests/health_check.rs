@@ -40,7 +40,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 }
 
 #[tokio::test]
-async fn subscribe_returns_a_404_when_data_is_missing() {
+async fn subscribe_returns_a_422_when_data_is_missing() {
     let addr = spawn_app().await;
     let client = Client::new();
     let test_cases = vec![
@@ -59,9 +59,9 @@ async fn subscribe_returns_a_404_when_data_is_missing() {
             .expect("Failed to execute request.");
 
         assert_eq!(
-            404,
+            422,
             response.status().as_u16(),
-            "The API did not fail with 400 Bad Request when the payload was {}.", // additional customised error message on test failure
+            "The API did not fail with 422 Unprocessable Content when the payload was {}.", // additional customised error message on test failure
             error_message
         )
     }
