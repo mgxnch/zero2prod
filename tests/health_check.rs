@@ -1,12 +1,20 @@
 use reqwest::Client;
 
-use zero2prod::routes::{app, listener};
+use sqlx::{Connection, PgConnection};
+use zero2prod::{
+    configuration,
+    routes::{app, listener},
+};
 
 #[tokio::test]
 async fn health_check_works() {
+    // Set up the test case
     let addr = spawn_app().await;
-
-    // HTTP client to make requests in this integration test
+    let configuration = configuration::get_configuration().expect("Failed to read configuration");
+    let connection_string = configuration.database.connection_string();
+    let connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to Postgres.");
     let client = Client::new();
 
     // Send request to health_check endpoint
@@ -24,9 +32,16 @@ async fn health_check_works() {
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
+    // Set up the test case
     let addr = spawn_app().await;
+    let configuration = configuration::get_configuration().expect("Failed to read configuration");
+    let connection_string = configuration.database.connection_string();
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to Postgres.");
     let client = Client::new();
 
+    // Send the subscribe request
     let body = "name=user%20one&email=foo_bar%40baz.com";
     let response = client
         .post(format!("{}/subscriptions", addr))
@@ -37,6 +52,15 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         .expect("Failed to execute request.");
 
     assert!(response.status().is_success());
+
+    // Check that it was persisted to database
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription");
+
+    assert_eq!(saved.name, "user");
+    assert_eq!(saved.email, "foo_bar@baz.com");
 }
 
 #[tokio::test]
@@ -68,7 +92,7 @@ async fn subscribe_returns_a_422_when_data_is_missing() {
 }
 
 /// Spawns the zero2prod server in the background on a random port. Returns the
-/// application address e.g. "127.0.0.1:{port}"
+/// application URL e.g. "http://127.0.0.1:{port}"
 async fn spawn_app() -> String {
     let app = app();
 
