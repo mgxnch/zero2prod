@@ -1,21 +1,7 @@
 mod health_check;
 mod subscriptions;
 
-use axum::{Router, routing::get, routing::post};
-use tokio::net::TcpListener;
-
+// Re-exported so that consumers of routes module don't need to reach too deep
+// Instead of `routes::subscriptions::subscribe`, consumers can call `routes::subscribe`.
 pub use health_check::*;
 pub use subscriptions::*;
-
-pub fn app() -> Router {
-    // Initialise and return a router
-    Router::new()
-        .route("/health_check", get(health_check))
-        .route("/subscriptions", post(subscribe))
-}
-
-/// Binds a listener on a given port.
-/// TODO: refactor to accept an address instead of just the port
-pub async fn listener(port: u16) -> Result<TcpListener, std::io::Error> {
-    TcpListener::bind(format!("127.0.0.1:{}", port)).await
-}

@@ -1,14 +1,40 @@
-use crate::configuration::get_configuration;
-use crate::routes::{app, listener};
+use std::sync::Arc;
 
-pub async fn run() {
-    // Read configuration
-    let configuration = get_configuration().expect("Failed to read configuration");
+use axum::{
+    Router,
+    routing::{get, post},
+};
+use sqlx::PgPool;
+use tokio::net::TcpListener;
 
-    // Initialise the Router and Listener
-    let app = app();
-    let listener = listener(configuration.application_port).await.unwrap();
+use crate::routes::{health_check, subscribe};
 
-    // Serve the application
+/// State object shared with all request handlers.
+pub struct AppState {
+    pub pool: PgPool,
+}
+
+/// Starts the application server.
+pub async fn run(listener: tokio::net::TcpListener, pool: PgPool) {
+    // Initialise the Router
+    let app = app(pool);
+
+    // Serve the application using the given listener
     axum::serve(listener, app).await.unwrap();
+}
+
+/// Initialises the application router.
+pub fn app(pool: PgPool) -> Router {
+    let state = Arc::new(AppState { pool });
+
+    // Initialise and return a router
+    Router::new()
+        .route("/health_check", get(health_check))
+        .route("/subscriptions", post(subscribe))
+        .with_state(state)
+}
+
+/// Binds a listener on a given port.
+pub async fn listener(port: u16) -> Result<TcpListener, std::io::Error> {
+    TcpListener::bind(format!("127.0.0.1:{}", port)).await
 }

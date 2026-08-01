@@ -1,3 +1,5 @@
+/// Settings required for the server to run, such as
+/// application port number and database settings.
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
@@ -13,6 +15,7 @@ pub struct DatabaseSettings {
     pub database_name: String,
 }
 
+/// Reads from the hardcoded "configuration.yaml" file.
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // Initialise a config reader
     let settings = config::Config::builder()
