@@ -1,12 +1,19 @@
 use reqwest::Client;
 
-use sqlx::PgPool;
-use zero2prod::configuration::get_configuration;
+use sqlx::{AssertSqlSafe, PgPool};
+use uuid::Uuid;
+use zero2prod::configuration::{DatabaseSettings, get_configuration};
 use zero2prod::startup;
 
 pub struct TestApp {
     pub address: String, // URL of the application e.g. http://127.0.0.1:8000
     pub pool: PgPool,
+}
+
+#[derive(sqlx::FromRow)]
+struct Subscription {
+    email: String,
+    name: String,
 }
 
 #[tokio::test]
@@ -47,12 +54,12 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     assert!(response.status().is_success());
 
     // Check that it was persisted to database
-    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+    let saved = sqlx::query_as::<_, Subscription>("SELECT email, name FROM subscriptions")
         .fetch_one(&test_app.pool)
         .await
         .expect("Failed to fetch saved subscription");
 
-    assert_eq!(saved.name, "user");
+    assert_eq!(saved.name, "user one");
     assert_eq!(saved.email, "foo_bar@baz.com");
 }
 
@@ -95,10 +102,10 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let config = get_configuration().expect("Failed to read configuration");
-    let pool = PgPool::connect(&config.database.connection_string())
-        .await
-        .expect("Failed to connect to Postgres");
+    // Set a new, randomised database name
+    let mut config = get_configuration().expect("Failed to read configuration");
+    config.database.database_name = format!("test-db-{}", Uuid::new_v4().to_string());
+    let pool = configure_database(&config.database).await;
 
     // Clone pool before moving it into the background task
     let db_pool = pool.clone();
@@ -109,4 +116,31 @@ async fn spawn_app() -> TestApp {
         address,
         pool: pool.clone(),
     }
+}
+
+/// Initialise the database based on the config
+async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // Connect to the Postgres instance
+    let create_pool = PgPool::connect(&config.connection_string_without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+
+    // Create a test database with a randomised name
+    let query = format!("CREATE DATABASE \"{}\"", config.database_name);
+    sqlx::query(AssertSqlSafe(query.as_str()))
+        .execute(&create_pool)
+        .await
+        .expect("Failed to create the database");
+
+    // Run migrations to set up the tables
+    let pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to Postgres");
+
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to migrate the database");
+
+    pool
 }
