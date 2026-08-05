@@ -6,6 +6,7 @@ use axum::{
 };
 use sqlx::PgPool;
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
 
 use crate::routes::{health_check, subscribe};
 
@@ -32,6 +33,7 @@ pub fn app(pool: PgPool) -> Router {
         .route("/health_check", get(health_check))
         .route("/subscriptions", post(subscribe))
         .with_state(state)
+        .layer(TraceLayer::new_for_http())
 }
 
 /// Binds a listener on a given port.

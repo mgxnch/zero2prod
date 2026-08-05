@@ -3,6 +3,11 @@ use zero2prod::{configuration, startup};
 
 #[tokio::main]
 async fn main() {
+    // Initialise tracing subscriber
+    tracing_subscriber::fmt()
+        .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+        .init();
+
     // Read configuration required to start the application
     // Panics if configuration file cannot be read
     let config = configuration::get_configuration().expect("Failed to read configuration");
