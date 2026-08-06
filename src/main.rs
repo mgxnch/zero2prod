@@ -1,11 +1,14 @@
 use sqlx::PgPool;
+use tracing_subscriber::EnvFilter;
 use zero2prod::{configuration, startup};
 
 #[tokio::main]
 async fn main() {
     // Initialise tracing subscriber
     tracing_subscriber::fmt()
-        .with_max_level(tracing_subscriber::filter::LevelFilter::TRACE)
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
 
     // Read configuration required to start the application
