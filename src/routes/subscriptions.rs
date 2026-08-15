@@ -19,6 +19,14 @@ pub async fn subscribe(
     State(state): State<Arc<AppState>>,
     Form(form): Form<FormData>,
 ) -> StatusCode {
+    let request_id = Uuid::new_v4();
+    tracing::info!(
+        "request_id {} - Adding '{}' '{}' as a new subscriber",
+        request_id,
+        form.email,
+        form.name
+    );
+
     match sqlx::query!(
         r#"
         INSERT INTO subscriptions(id, email, name, subscribed_at)
@@ -32,9 +40,19 @@ pub async fn subscribe(
     .execute(&state.pool)
     .await
     {
-        Ok(_) => StatusCode::OK,
+        Ok(_) => {
+            tracing::info!(
+                "request_id {} - New subscriber details have been saved",
+                request_id
+            );
+            StatusCode::OK
+        }
         Err(e) => {
-            println!("Failed to execute query: {}", e);
+            tracing::info!(
+                "request_id {} - Failed to execute query: {:?}",
+                request_id,
+                e
+            );
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
