@@ -13,6 +13,20 @@ Using `axum` as the web server.
 
 ## Development
 
+### Start Postgres
+
+Start Postgres in Docker.
+
+### Start service
+
 ```bash
-cargo watch -x check -x test -x run
+cargo run
+```
+
+## Debug
+
+### Access Postgres
+
+```bash
+psql -h localhost -p 5432 -U postgres
 ```
